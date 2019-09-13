@@ -1,0 +1,62 @@
+import tweepy
+import webbrowser
+import yweather
+from textblob import TextBlob
+from matplotlib import pyplot as plt
+from time import time
+# Authenticate
+consumer_key = 'MbwP5ytGhcxl0OAMT82aCx8Go'
+consumer_secret = 'szXx8V25pFySCDqlhqp4pupYnaMe8ZtJddvRjyIr56mZhW2xjx'
+access_token = '1152596786529202176-wHnjbTsJY3wukSQO0cQv6GETuzhB7x'
+access_token_secret = 'EmllK0SdOuoAReHhFhR41NbFjfcoxfhSZn6JYYoFJANUu'
+auth = tweepy.OAuthHandler(consumer_key, consumer_secret)
+auth.set_access_token(access_token, access_token_secret)
+twitter_api = tweepy.API(auth)
+
+
+# Find the most trending topic in twitter
+client = yweather.Client()
+World_WOE_ID = client.fetch_woeid('World')
+
+trends = twitter_api.trends_place(World_WOE_ID)
+search_hashtag = tweepy.Cursor(twitter_api.search, q='hashtag').items(5000)
+
+trending_topic = trends[0]['trends'][0]
+
+# Retrieve Tweets
+
+last_seen_id = None
+result = True
+t0 = time()
+while result:
+    public_tweets = twitter_api.search(q=trending_topic['name'], count=100, tweet_mode='extended', max_id=last_seen_id)
+    last_seen_id = public_tweets[-1]._json['id'] - 1
+    break
+print('The total collected value = ', len(public_tweets))
+
+# Perform Sentiment Analysis on Tweets
+
+positive = 0
+negative = 0
+neutral = 0
+for tweet in public_tweets:
+    analysis = TextBlob(tweet.full_text)
+    polarity_value = analysis.sentiment.polarity
+    if 0 < polarity_value <= 1:
+        positive += 1
+    elif -1 <= polarity_value < 0:
+        negative += 1
+    else:
+        neutral += 1
+
+# Plotting the graph in a pie-chart
+slices = [positive, negative, neutral]
+labels = ['Positive', 'Negative', 'Neutral']
+colors = ['c', 'm', 'k']
+plt.pie(slices, labels=labels, colors=colors)
+plt.show()
+plt.title('Sentiment Analysis')
+print("Do you want to see the most trending topic in twitter in it's current page : press Y or N")
+response = input()
+if response == 'y' or 'Y':
+    webbrowser.open(trending_topic['url'])
